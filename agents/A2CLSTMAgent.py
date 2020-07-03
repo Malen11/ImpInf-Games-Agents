@@ -2,23 +2,26 @@
 import numpy as np
 import tensorflow as tf
 
-from agents.rl.a2c_v2_qpg import A2C
+from agents.rl.a2c_v2_lstm import A2CLSTM
 from agents.rl.utils.functions import softmax, argmax
 
-class A2CQPGAgent(object):
+class A2CLSTMAgent(object):
 
     def __init__(self,
                  action_num=2,
                  state_shape=None,
+                 timesteps = 5,
                  trainble=True,
                  
-                 critic_mlp_layers=[4,256],
+                 critic_lstm_layers=[1,256],
+                 critic_mlp_layers=[3,256],
                  critic_activation_func='tanh', 
                  critic_kernel_initializer='glorot_uniform',
                  critic_learning_rate=0.0001,
                  critic_bacth_size=128,
                  
-                 actor_mlp_layers=[4,256],
+                 actor_lstm_layers=[1,256],
+                 actor_mlp_layers=[3,256],
                  actor_activation_func='tanh', 
                  actor_kernel_initializer='glorot_uniform',  
                  actor_learning_rate=0.0001,
@@ -39,18 +42,20 @@ class A2CQPGAgent(object):
                  max_reward=100):
         self.use_raw = False
         
-        # Create estimators
-        self.bot = A2C(
+        self.bot = A2CLSTM(
             num_state_params=state_shape[0],
             num_actions=action_num,
+            timesteps = timesteps,
             trainble=trainble,
             
+            critic_lstm_units=np.full((critic_lstm_layers[0]), critic_lstm_layers[1]), 
             critic_hidden_units=np.full((critic_mlp_layers[0]), critic_mlp_layers[1]), 
             critic_learning_rate=critic_learning_rate,
             critic_activation_func=critic_activation_func, 
             critic_kernel_initializer=critic_kernel_initializer,
             critic_bacth_size=critic_bacth_size,
             
+            actor_lstm_units=np.full((actor_lstm_layers[0]), actor_lstm_layers[1]),
             actor_hidden_units=np.full((actor_mlp_layers[0]), actor_mlp_layers[1]),
             actor_learning_rate=actor_learning_rate, 
             actor_activation_func=actor_activation_func, 
@@ -58,7 +63,6 @@ class A2CQPGAgent(object):
             actor_bacth_size=actor_bacth_size,
             
             gamma=discount_factor, 
-            lam = lam,
             
             entropy_coef=entropy_coef,
             entropy_decoy=entropy_decoy,
@@ -84,7 +88,7 @@ class A2CQPGAgent(object):
         
     def feed_batch(self, batch):
         self.bot.feed_batch(batch)
-
+        
     def feed(self, ts):
         (state, action, reward, next_state, done) = tuple(ts)
         self.bot.feed(
@@ -114,14 +118,18 @@ class A2CQPGAgent(object):
     
     def eval_step(self, state):
         
-        batch = [state['obs']]
+        self.bot.lstm.add_data(state['obs'])
+        batch = [self.bot.lstm.get_data()]
         ts = tf.convert_to_tensor(batch)
         
-        logits,_ = self.bot.predict(ts)
+        logits,_ = self.bot.predict(ts) 
         probs = softmax(logits, state['legal_actions'])[0]
         best_action = np.argmax(probs)
         return best_action, probs
     
+    def reset_lstm_memory(self):
+        self.bot.reset_lstm_memory()
+        
     def save_model(self, path):
         self.bot.save_model(path)
         
