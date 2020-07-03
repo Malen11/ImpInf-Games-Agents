@@ -5,7 +5,7 @@ import tensorflow as tf
 import os
 
 from agents.rl.utils.memory import ReplayMemory, LSTMemory
-from agents.rl.utils.functions import softmax, argmax
+from agents.rl.utils.functions import softmax, argmax, general_advantage_estimates
 from agents.rl.models.neural_network_models import LSTMNeuralNetworkModel
 
 class A2CLSTM(object):
