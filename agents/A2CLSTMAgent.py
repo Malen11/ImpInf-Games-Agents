@@ -63,6 +63,7 @@ class A2CLSTMAgent(object):
             actor_bacth_size=actor_bacth_size,
             
             gamma=discount_factor, 
+            lam = lam,
             
             entropy_coef=entropy_coef,
             entropy_decoy=entropy_decoy,
